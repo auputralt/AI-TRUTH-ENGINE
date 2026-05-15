@@ -2,7 +2,9 @@
 
 Multi-agent adversarial analysis engine. One question — up to 1,000 independent AI agents tear it apart from 8 different perspectives. No consensus assumed.
 
-![Truth Engine Screenshot](public/screenshot.png)
+![Truth Engine — Home](Public/screenshot-home.png)
+
+![Truth Engine — Report](Public/screenshot-report.png)
 
 ## How It Works
 

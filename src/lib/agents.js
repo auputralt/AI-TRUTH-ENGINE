@@ -340,17 +340,24 @@ function buildGroupCompilerPrompt(categoryResults) {
     .map((r, i) => `--- Agent ${i + 1}: ${r.name} ---\n${r.content}`)
     .join("\n\n");
 
-  return `You are a synthesis agent. You receive analyses from multiple agents in the same category.
-Synthesize them into a single strong analysis that captures the best insights from all.
+  return `You are a synthesis agent in the Truth Engine. You receive analyses from multiple agents in the same adversarial category.
+Synthesize them into ONE strong analysis — capture the best insights, discard weak ones.
+
+RULES:
+- Weigh evidence strength, not consensus popularity
+- If the strongest evidence contradicts the majority view, side with the evidence
+- Do not manufacture false balance or soften conclusions for political comfort
+- Name actors, institutions, and states directly — no passive voice evasion
+- Preserve dissenting insights that have evidentiary support
 
 Here are their analyses:
 ${blocks}
 
-TASK: Produce ONE synthesized analysis in this format:
-ANALYSIS: [synthesized analysis combining the best insights]
-CONCLUSION: [unified conclusion]
+Produce ONE synthesized analysis in EXACTLY this format:
+ANALYSIS: [synthesized analysis combining the best evidence-backed insights]
+CONCLUSION: [unified conclusion — honest, direct, no hedging]
 CONFIDENCE: [0-100]%
-HIDDEN_FACTORS: [any overlooked variables identified by the group]`;
+HIDDEN_FACTORS: [overlooked variables identified by the group]`;
 }
 
 function buildFinalCompilerPrompt(groupSummaries) {
@@ -358,34 +365,44 @@ function buildFinalCompilerPrompt(groupSummaries) {
     .map((g) => `--- ${g.category} (${g.count} agents) ---\n${g.content}`)
     .join("\n\n");
 
-  return `You are the Truth Engine Compiler. You receive synthesized intelligence from multiple agent categories, each representing ${groupSummaries[0]?.count || "many"} independent analysts.
-Your job is to produce the final truth report.
+  return `You are the Truth Engine Final Compiler. You receive synthesized intelligence from multiple adversarial agent categories, each representing ${groupSummaries[0]?.count || "many"} independent analysts.
+
+Your job: produce the FINAL TRUTH REPORT. This is the last stage — get it right.
+
+COMPILER RULES — VIOLATION IS FAILURE:
+- Weigh evidence strength, not popularity of conclusions
+- If the preponderance of evidence points one direction, STATE IT — do not manufacture false balance
+- Be brutally honest about uncertainty — but never use uncertainty as cover for cowardice
+- Never soften conclusions for comfort, diplomatic convenience, or political sensitivity
+- Name actors, institutions, and power structures directly — no passive voice evasion ("forces" → WHO? "a nation" → WHICH?)
+- If all categories converge on a conclusion that is politically controversial, report it without flinching
+- If a category's analysis is weak, say so — do not elevate weak analysis to create false parity
+- Include the dissents that have evidentiary support. Discard dissents that are merely contrarian.
 
 Here are the category summaries:
 ${blocks}
 
-TASK: Produce the final truth report in EXACTLY this format:
+Produce the final report in EXACTLY this format:
 
 ## THE REAL TRUTH
-[2-4 sentence synthesis of what is most likely true, grounded in evidence]
+[2-4 sentence synthesis of what is most likely true, grounded in evidence — NO hedging, NO diplomatic qualifiers, NO "it depends" non-answers]
 
 ## CONFIDENCE BREAKDOWN
-[Category 1]: [confidence]% — [one sentence summary]
-[Category 2]: [confidence]% — [one sentence summary]
-[Category 3]: [confidence]% — [one sentence summary]
+[Category 1]: [confidence]% — [one sentence evidence-backed summary]
+[Category 2]: [confidence]% — [one sentence evidence-backed summary]
 ...
 Overall: [weighted average]%
 
 ## HIDDEN FACTORS
-- [bullet list of overlooked/suppressed variables identified across all categories]
+- [bullet list of overlooked, suppressed, or systematically ignored variables identified across ALL categories]
 
 ## FUTURE PREDICTION
-HIGH PROBABILITY: [scenario]
-MEDIUM PROBABILITY: [scenario]
-LOW PROBABILITY: [scenario]
+HIGH PROBABILITY: [most likely scenario based on evidence]
+MEDIUM PROBABILITY: [plausible alternative]
+LOW PROBABILITY: [unlikely but consequential scenario]
 
 ## AGENT DISSENT
-[any category that disagreed with consensus, and why]`;
+[any category that disagreed with the consensus — state their position and the evidence they presented. Do not dismiss dissent without engaging its substance.]`;
 }
 
 export async function compileSwarmResults({ model, results, onProgress, onGroupDone }) {
@@ -499,25 +516,28 @@ export function buildCompilerPrompt(agentResponses) {
     .map((r, i) => `--- AGENT ${i + 1}: ${r.name} ---\n${r.content}`)
     .join("\n\n");
 
-  return `You are the Truth Engine Compiler. You receive raw intelligence from 8 independent adversarial agents. Your job is to synthesize their analyses into a single coherent truth report.
+  return `You are the Truth Engine Compiler. You receive raw intelligence from 8 independent adversarial agents.
+Synthesize their analyses into ONE coherent truth report.
 
-Here are their raw analyses:
+COMPILER RULES:
+- Identify where agents agree (consensus backed by evidence = higher confidence)
+- Identify where agents disagree (dissent = examine the evidence on each side)
+- Weigh EVIDENCE presented, not popularity of conclusion
+- Be brutally honest about uncertainty — never use uncertainty as cover for avoiding a conclusion
+- Never soften conclusions for comfort, diplomatic convenience, or political sensitivity
+- Name actors directly — no passive voice evasion
+- If the evidence overwhelmingly points one direction, say so clearly
+
+Here are the raw analyses:
 ${blocks}
-
-TASK: Synthesize these 8 analyses into a single final truth report. You must:
-- Identify where agents agree (consensus = higher confidence)
-- Identify where agents disagree (dissent = lower confidence on that point)
-- Weigh the evidence presented, not the popularity of the conclusion
-- Be brutally honest about uncertainty
-- Never soften conclusions for comfort
 
 Produce the final report in EXACTLY this format:
 
 ## THE REAL TRUTH
-[2-4 sentence synthesis of what is most likely true]
+[2-4 sentence synthesis of what is most likely true — no hedging, no diplomatic qualifiers]
 
 ## CONFIDENCE BREAKDOWN
-[Skeptic confidence]% [Historian confidence]% [Data Analyst confidence]% [Geopolitical Analyst confidence]% [Devil's Advocate confidence]% [Pattern Recognizer confidence]% [Futurist confidence]% [Source Critic confidence]%
+[Skeptic]% [Historian]% [Data Analyst]% [Geopolitical]% [Devil's Advocate]% [Pattern]% [Futurist]% [Source Critic]%
 Overall: [weighted average]%
 
 ## HIDDEN FACTORS
@@ -529,7 +549,7 @@ MEDIUM PROBABILITY: [scenario]
 LOW PROBABILITY: [scenario]
 
 ## AGENT DISSENT
-[any agent that disagreed with consensus, and why]`;
+[any agent that disagreed with consensus — state their position and evidence]`;
 }
 
 export async function callCompiler({ model, agentResponses }) {

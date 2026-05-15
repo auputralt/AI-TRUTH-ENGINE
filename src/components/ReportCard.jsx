@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { CATEGORIES } from "../lib/agents";
 import { parseReport, parseAgentResponse, aggregateConfidenceByCategory, renderFormattedText } from "../lib/parser.jsx";
+import { exportAsPDF, downloadMarkdown, copyToClipboard, exportAsDOCX } from "../lib/export.js";
 import ConfidenceBar from "./ConfidenceBar";
 
 const SECTION_ORDER = ["truth", "confidence", "hidden", "future", "dissent"];
@@ -16,6 +17,8 @@ const SECTION_META = {
 export default function ReportCard({ results, question, onReset }) {
   const { rawResponses, groupSummaries, compiledReport, agentCount, timestamp } = results;
   const [copied, setCopied] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef(null);
   const sectionRefs = useRef([]);
 
   const sections = parseReport(compiledReport);
@@ -38,10 +41,34 @@ export default function ReportCard({ results, question, onReset }) {
     });
   }, []);
 
-  function handleCopy() {
-    navigator.clipboard.writeText(compiledReport);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (exportRef.current && !exportRef.current.contains(e.target)) {
+        setExportOpen(false);
+      }
+    }
+    if (exportOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [exportOpen]);
+
+  async function handleExport(format) {
+    setExportOpen(false);
+    switch (format) {
+      case "pdf":
+        exportAsPDF(results, question);
+        break;
+      case "markdown":
+        downloadMarkdown(results, question);
+        break;
+      case "copy":
+        await copyToClipboard(results, question);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        break;
+      case "docx":
+        exportAsDOCX(results, question);
+        break;
+    }
   }
 
   return (
@@ -55,12 +82,31 @@ export default function ReportCard({ results, question, onReset }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            className="px-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-xs text-text-dim hover:text-text hover:border-border transition-all"
-          >
-            {copied ? "Copied" : "Copy"}
-          </button>
+          <div ref={exportRef} className="relative">
+            <button
+              onClick={() => setExportOpen(!exportOpen)}
+              className="px-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-xs text-text-dim hover:text-text hover:border-border transition-all flex items-center gap-1.5"
+            >
+              {copied ? "Copied" : "Export"}
+              <svg className={`w-3 h-3 transition-transform ${exportOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-surface border border-border-subtle rounded-xl shadow-lg shadow-black/20 py-1 z-50 min-w-[160px]">
+                <button onClick={() => handleExport("pdf")} className="w-full px-3.5 py-2 text-left text-xs text-text-dim hover:text-text hover:bg-accent/5 flex items-center gap-2.5 transition-colors">
+                  <span>📄</span> PDF
+                </button>
+                <button onClick={() => handleExport("markdown")} className="w-full px-3.5 py-2 text-left text-xs text-text-dim hover:text-text hover:bg-accent/5 flex items-center gap-2.5 transition-colors">
+                  <span>📝</span> Markdown
+                </button>
+                <button onClick={() => handleExport("copy")} className="w-full px-3.5 py-2 text-left text-xs text-text-dim hover:text-text hover:bg-accent/5 flex items-center gap-2.5 transition-colors">
+                  <span>📋</span> Copy Text
+                </button>
+                <button onClick={() => handleExport("docx")} className="w-full px-3.5 py-2 text-left text-xs text-text-dim hover:text-text hover:bg-accent/5 flex items-center gap-2.5 transition-colors">
+                  <span>📑</span> DOCX
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={onReset}
             className="px-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-xs text-text-dim hover:text-text hover:border-border transition-all"

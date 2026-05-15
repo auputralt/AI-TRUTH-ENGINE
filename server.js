@@ -100,6 +100,81 @@ app.post("/api/run-python", async (req, res) => {
   }
 });
 
+// -- Python Prompt Engine proxy ----------------------------------------------
+
+const PROMPT_ENGINE = import.meta.url
+  ? path.join(__dirname, "api", "lib", "prompt_engine.py")
+  : "./api/lib/prompt_engine.py";
+
+app.post("/api/check-bias", async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "text string required" });
+    }
+
+    const tmpIn = `/tmp/truth-bias-input-${Date.now()}.txt`;
+    const { writeFile, unlink } = await import("node:fs/promises");
+    await writeFile(tmpIn, text, "utf8");
+
+    const { execFile } = await import("node:child_process");
+    execFile("python3", ["-u", PROMPT_ENGINE, "--check", tmpIn], { timeout: 15000 }, (err, stdout, stderr) => {
+      unlink(tmpIn).catch(() => {});
+      if (err) {
+        return res.status(502).json({ error: stderr || err.message });
+      }
+      res.type("text/plain").send(stdout);
+    });
+  } catch (err) {
+    console.error("[/api/check-bias]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/score-response", async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "text string required" });
+    }
+
+    const tmpIn = `/tmp/truth-score-input-${Date.now()}.txt`;
+    const { writeFile, unlink } = await import("node:fs/promises");
+    await writeFile(tmpIn, text, "utf8");
+
+    const { execFile } = await import("node:child_process");
+    execFile("python3", ["-u", PROMPT_ENGINE, "--score", tmpIn], { timeout: 15000 }, (err, stdout, stderr) => {
+      unlink(tmpIn).catch(() => {});
+      if (err) {
+        return res.status(502).json({ error: stderr || err.message });
+      }
+      res.type("text/plain").send(stdout);
+    });
+  } catch (err) {
+    console.error("[/api/score-response]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/build-prompts", async (_req, res) => {
+  try {
+    const { execFile } = await import("node:child_process");
+    execFile("python3", ["-u", PROMPT_ENGINE, "--build"], { timeout: 10000 }, (err, stdout, stderr) => {
+      if (err) {
+        return res.status(502).json({ error: stderr || err.message });
+      }
+      try {
+        res.json(JSON.parse(stdout));
+      } catch {
+        res.type("text/plain").send(stdout);
+      }
+    });
+  } catch (err) {
+    console.error("[/api/build-prompts]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -- History API -------------------------------------------------------------
 
 app.get("/api/history", async (_req, res) => {
